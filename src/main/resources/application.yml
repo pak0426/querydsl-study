@@ -7,13 +7,14 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create #application ?? ??? table? ???? ???? ?? ??
+      ddl-auto: create #application 시작 될때 table을 생성해준다.
     properties:
       hibernate:
 #      show_sql: true
         format_sql: true
+        use_sql_comments: true #쿼리가 보일때 alias가 나오게 표출 - 같은 테이블을
 
 
 logging.level:
-  org.hibernate.SQL: debug  #logger? ?? ??
-# org.hibernate.type: trace #System.out ?? ??
+  org.hibernate.SQL: debug  #logger
+# org.hibernate.type: trace #System.out
