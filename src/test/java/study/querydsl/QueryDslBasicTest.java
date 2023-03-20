@@ -97,6 +97,15 @@ public class QueryDslBasicTest {
         assertThat(findMember.getAge()).isEqualTo(10);
     }
 
+    /*
+    fetch() : 리스트 조회, 데이터 없으면 빈 리스트 반환
+    fetchOne() : 단 건 조회
+    결과가 없으면 : null
+    결과가 둘 이상이면 : com.querydsl.core.NonUniqueResultException
+    fetchFirst() : limit(1).fetchOne()
+    fetchResults() : 페이징 정보 포함, total count 쿼리 추가 실행
+    fetchCount() : count 쿼리로 변경해서 count 수 조회
+     */
     @Test
     public void resultFetch() {
         List<Member> result = queryFactory
@@ -117,6 +126,60 @@ public class QueryDslBasicTest {
 
         results.getTotal();
         List<Member> content = results.getResults();
+
+        Long count = queryFactory
+                .selectFrom(member)
+                .fetchCount();
+    }
+
+    @Test
+    public void sort() {
+        em.persist(new Member(null, 100));
+        em.persist(new Member("member5", 100));
+        em.persist(new Member("member6", 100));
+
+
+        List<Member> members = queryFactory
+                .selectFrom(member)
+                .where(member.age.eq(100))
+                .orderBy(member.age.desc(), member.username.asc().nullsLast())
+                .fetch();
+
+        Member member5 = members.get(0);
+        Member member6 = members.get(1);
+        Member memberNull = members.get(2);
+
+        assertThat(member5.getUsername()).isEqualTo("member5");
+        assertThat(member6.getAge()).isEqualTo(member5.getAge());
+        assertThat(memberNull.getUsername()).isNull();
+    }
+
+    @Test
+    public void paging() {
+        List<Member> members = queryFactory
+                .selectFrom(member)
+                .orderBy(member.username.desc())
+                .offset(1) //N번째 row 부터
+                .limit(3) //N개를 가져온다.
+                .fetch();
+
+        assertThat(members.size()).isEqualTo(3);
+    }
+
+    @Test
+    public void paging2() {
+        QueryResults<Member> fetchResults = queryFactory
+                .selectFrom(member)
+                .orderBy(member.username.desc())
+                .offset(1) //N번째 row 부터
+                .limit(3) //N개를 가져온다.
+                .fetchResults();
+
+        assertThat(fetchResults.getTotal()).isEqualTo(4);
+        assertThat(fetchResults.getLimit()).isEqualTo(3);
+        assertThat(fetchResults.getOffset()).isEqualTo(1);
+        assertThat(fetchResults.getResults().size()).isEqualTo(3);
+
     }
 
 }
