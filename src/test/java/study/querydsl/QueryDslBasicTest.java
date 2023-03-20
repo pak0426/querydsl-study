@@ -1,17 +1,18 @@
 package study.querydsl;
 
+import com.querydsl.core.QueryResults;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.entity.Member;
-import study.querydsl.entity.QMember;
 import study.querydsl.entity.Team;
 
 import javax.persistence.EntityManager;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static study.querydsl.entity.QMember.member;
@@ -22,11 +23,11 @@ public class QueryDslBasicTest {
 
     @Autowired EntityManager em;
 
-    JPAQueryFactory jpaQueryFactory;
+    JPAQueryFactory queryFactory;
 
     @BeforeEach
     public void before() {
-        jpaQueryFactory = new JPAQueryFactory(em);
+        queryFactory = new JPAQueryFactory(em);
         Team teamA = new Team("teamA");
         Team teamB = new Team("teamB");
         em.persist(teamA);
@@ -61,7 +62,7 @@ public class QueryDslBasicTest {
 //        QMember qMember = new QMember("m");
 //        QMember qMember = QMember.member;
 
-        Member findMember = jpaQueryFactory
+        Member findMember = queryFactory
                 .select(member)
                 .from(member)
                 .where(member.username.eq("member1"))
@@ -72,7 +73,7 @@ public class QueryDslBasicTest {
 
     @Test
     public void search() {
-        Member findMember = jpaQueryFactory
+        Member findMember = queryFactory
                 .selectFrom(member)
                 .where(member.username.eq("member1")
                         .and(member.age.between(10, 30)))
@@ -84,7 +85,7 @@ public class QueryDslBasicTest {
 
     @Test
     public void searchAndParam() {
-        Member findMember = jpaQueryFactory
+        Member findMember = queryFactory
                 .selectFrom(member)
                 .where(
                         member.username.eq("member1"),
@@ -94,6 +95,28 @@ public class QueryDslBasicTest {
 
         assertThat(findMember.getUsername()).isEqualTo("member1");
         assertThat(findMember.getAge()).isEqualTo(10);
+    }
+
+    @Test
+    public void resultFetch() {
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        Member fetchOne = queryFactory
+                .selectFrom(member)
+                .fetchOne();
+
+        Member fetchFirst = queryFactory
+                .selectFrom(member)
+                .fetchFirst();
+
+        QueryResults<Member> results = queryFactory
+                .selectFrom(member)
+                .fetchResults();
+
+        results.getTotal();
+        List<Member> content = results.getResults();
     }
 
 }
