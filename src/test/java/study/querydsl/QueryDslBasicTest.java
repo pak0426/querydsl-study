@@ -1,6 +1,7 @@
 package study.querydsl;
 
 import com.querydsl.core.QueryResults;
+import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static study.querydsl.entity.QMember.member;
+import static study.querydsl.entity.QTeam.team;
 
 @SpringBootTest
 @Transactional
@@ -179,7 +181,99 @@ public class QueryDslBasicTest {
         assertThat(fetchResults.getLimit()).isEqualTo(3);
         assertThat(fetchResults.getOffset()).isEqualTo(1);
         assertThat(fetchResults.getResults().size()).isEqualTo(3);
+    }
 
+    @Test
+    public void aggregation() {
+        List<Tuple> result = queryFactory
+                .select(
+                        member.count(),
+                        member.age.sum(),
+                        member.age.avg(),
+                        member.age.max(),
+                        member.age.min()
+                )
+                .from(member)
+                .fetch();
+
+        Tuple tuple = result.get(0);
+
+        assertThat(tuple.get(member.count())).isEqualTo(4);
+        assertThat(tuple.get(member.age.sum())).isEqualTo(100);
+        assertThat(tuple.get(member.age.avg())).isEqualTo(25);
+        assertThat(tuple.get(member.age.max())).isEqualTo(40);
+        assertThat(tuple.get(member.age.min())).isEqualTo(10);
+    }
+
+    /**
+    *   팀의 이름과 각 팀의 평균 연령 구하기
+    *
+    */
+    @Test
+    public void group() {
+        List<Tuple> result = queryFactory
+                .select(
+                        team.name,
+                        member.age.avg()
+                )
+                .from(member)
+                .join(member.team, team)
+                .groupBy(member.team.name)
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+
+        Tuple teamA = result.get(0);
+        Tuple teamB = result.get(1);
+
+        assertThat(teamA.get(team.name)).isEqualTo("teamA");
+        assertThat(teamB.get(team.name)).isEqualTo("teamB");
+        assertThat(teamA.get(member.age.avg())).isEqualTo(15);
+        assertThat(teamB.get(member.age.avg())).isEqualTo(35);
+    }
+
+    /**
+    teamA에 소속된 모든 회원을 찾자
+     */
+    @Test
+    public void join() {
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .leftJoin(member.team, team)
+                .where(member.team.name.eq("teamA"))
+                .fetch();
+
+        Member member1 = result.get(0);
+        Member member2 = result.get(1);
+        assertThat(member1.getUsername()).isEqualTo("member1");
+        assertThat(member2.getAge()).isEqualTo(20);
+
+        assertThat(result)
+                .extracting("username")
+                .containsExactly("member1", "member2");
+    }
+
+    /**
+     * 세타 조인
+     * 회원 이름이 팀 이름과 같은 회원 조회
+     */
+    @Test
+    public void theta_join() {
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+        em.persist(new Member("teamC"));
+
+        List<Member> result = queryFactory
+                .select(member)
+                .from(member, team) //from에 나열
+                .where(member.username.eq(team.name))
+                .fetch();
+
+        assertThat(result)
+                .extracting("username")
+                .containsExactly("teamA", "teamB");
     }
 
 }
