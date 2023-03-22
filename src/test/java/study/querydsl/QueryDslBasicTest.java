@@ -351,7 +351,7 @@ public class QueryDslBasicTest {
                 .fetchOne();
 
         boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
-        assertThat(loaded).as("패치 조인 미적용").isTrue();
+        assertThat(loaded).as("패치 조인 적용").isTrue();
 
     }
 
