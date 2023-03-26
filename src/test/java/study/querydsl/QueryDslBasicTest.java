@@ -738,4 +738,37 @@ public class QueryDslBasicTest {
             System.out.println("fetch1 = " + fetch1);
         }
     }
+
+    @Test
+    public void sqlFunction() {
+        List<String> result = queryFactory
+                .select(
+                        Expressions.stringTemplate("function('replace', {0}, {1}, {2})",
+                                member.username,
+                                "member",
+                                "M")
+                )
+                .from(member)
+                .fetch();
+
+        for (String s : result) {
+            System.out.println("s = " + s);
+        }
+    }
+
+    @Test
+    public void sqlFunctionToUpper() {
+        List<Tuple> fetch = queryFactory
+                .select(
+//                        Expressions.stringTemplate("function('upper', {0})", member.username)
+                        member.username.upper().as("name_upper"),
+                        member.username.toUpperCase().as("name_toUpperCase")
+                )
+                .from(member)
+                .fetch();
+
+        for (Tuple tuple : fetch) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
 }
