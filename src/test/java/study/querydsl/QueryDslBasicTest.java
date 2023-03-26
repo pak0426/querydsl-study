@@ -3,21 +3,19 @@ package study.querydsl;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.Expression;
 import com.querydsl.core.types.ExpressionUtils;
-import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
-import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.Commit;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.dto.MemberDto;
 import study.querydsl.dto.QMemberDto;
@@ -567,10 +565,12 @@ public class QueryDslBasicTest {
                 .select(Projections.fields(UserDto.class,
                         member.username.as("name"),
 //                        member.age,
-                        ExpressionUtils.as(JPAExpressions
+                        ExpressionUtils.as(
+                                JPAExpressions
                                 .select(memberSub.age.max())
                                 .from(memberSub), "age")
-                ))
+                        )
+                )
                 .from(member)
                 .fetch();
 
@@ -647,7 +647,6 @@ public class QueryDslBasicTest {
                 .fetch();
     }
 
-
     private BooleanExpression usernameEq(String usernameCond) {
         //where에 null이 들어가면 무시가 된다.
         return usernameCond != null ? member.username.eq(usernameCond) : null;
@@ -659,5 +658,84 @@ public class QueryDslBasicTest {
 
     private BooleanExpression allEq(String usernameCond, int ageCond) {
         return usernameEq(usernameCond).and(ageEq(ageCond));
+    }
+
+    /**
+     * bulk쿼리는 영속성 컨텍스트 상태를 무시하고 바로 DB에 쿼리를 날려버림
+     * 그래서 영속성 컨텍스트와 DB의 상태가 다를 수 있다.
+     */
+    @Test
+    @Commit
+    public void bulkUpdate() {
+        long count = queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+
+        //영속성 컨텍스트 초기화
+        em.flush();
+        em.clear();
+        
+        System.out.println("count = " + count);
+
+        List<Member> fetch = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        /**
+         *  영속성 컨텍스트에서의 상태가 변하지 않았기 때문에 member1, mebmer2는 비회원으로 update된 결과로 조회되지 않는다.
+         *  실제 DB에서는 비회원으로 update가 되어있는 상태임..
+         *  우선권을 영속성 컨텍스트가 갖는다.
+         *  bulk 연산 후엔 영속성 컨텍스트를 초기화 해주자.
+         */
+        for (Member fetch1 : fetch) {
+            System.out.println("fetch1 = " + fetch1);
+        }
+    }
+
+    @Test
+    public void bulkAdd() {
+        long count = queryFactory
+                .update(member)
+//                .set(member.age, member.age.add(10))
+//                .set(member.age, member.age.add(-10))
+//                .set(member.age, member.age.multiply(10))
+                .set(member.age, member.age.divide(10))
+                .execute();
+
+        System.out.println("count = " + count);
+
+        em.flush();
+        em.clear();
+
+        List<Member> fetch = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        for (Member fetch1 : fetch) {
+            System.out.println("fetch1 = " + fetch1);
+        }
+    }
+
+    @Test
+    public void bulkDelete() {
+        long count = queryFactory
+                .delete(member)
+                .where(member.age.gt(31))
+                .execute();
+
+        System.out.println("count = " + count);
+
+        em.flush();
+        em.clear();
+
+        List<Member> fetch = queryFactory
+                .selectFrom(member)
+                .fetch();
+
+        for (Member fetch1 : fetch) {
+            System.out.println("fetch1 = " + fetch1);
+        }
     }
 }
