@@ -626,7 +626,7 @@ public class QueryDslBasicTest {
 
         return queryFactory
                 .selectFrom(member)
-                .where()
+                .where(builder)
                 .fetch();
     }
 
