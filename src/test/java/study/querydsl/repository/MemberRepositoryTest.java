@@ -3,33 +3,31 @@ package study.querydsl.repository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.entity.Member;
 
-import javax.persistence.EntityManager;
-
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Transactional
-//@ActiveProfiles("local")
 class MemberRepositoryTest {
 
-    @Autowired EntityManager em;
     @Autowired MemberRepository memberRepository;
 
     @Test
-    public void test() {
-        Member memberABC = new Member("memberABC", 10);
-        em.persist(memberABC);
+    public void basicTest() {
+        Member member = new Member("member1", 10);
+        memberRepository.save(member);
 
-        List<Member> result = memberRepository.findMemberByUsername("member1");
+        Member findMember = memberRepository.findById(member.getId()).get();
+        assertThat(member).isEqualTo(findMember);
 
-        for (Member member1 : result) {
-            System.out.println("member1 = " + member1);
-        }
+        List<Member> all = memberRepository.findAll();
+        assertThat(all).containsExactly(findMember);
+
+        List<Member> byUsername = memberRepository.findByUsername(member.getUsername());
+        assertThat(byUsername).containsExactly(member);
     }
 }
