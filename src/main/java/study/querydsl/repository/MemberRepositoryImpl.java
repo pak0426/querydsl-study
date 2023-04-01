@@ -2,10 +2,12 @@ package study.querydsl.repository;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.util.StringUtils;
 import study.querydsl.dto.MemberSearchCondition;
 import study.querydsl.dto.MemberTeamDto;
@@ -83,8 +85,10 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
         return new PageImpl<>(content, pageable, total);
     }
 
-    private long getTotal(MemberSearchCondition condition) {
-        long total = queryFactory
+    @Override
+    public Page<MemberTeamDto> searchPageCountQuery(MemberSearchCondition condition, Pageable pageable) {
+        List<MemberTeamDto> content = getMemberTeamDtos(condition, pageable);
+        JPAQuery<Member> countQuery = queryFactory
                 .selectFrom(member)
                 .leftJoin(member.team, team)
                 .where(
@@ -92,9 +96,14 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                         teamNameEq(condition.getTeamName()),
                         ageGoe(condition.getAgeGoe()),
                         ageLoe(condition.getAgeLoe())
-                )
-                .fetchCount();
-        return total;
+                );
+
+        /**
+         * offset이 1이고 limit가 100일때 실제 데이터가 3밖에 없다면 100을 넘지 않는다면 굳이 total 쿼리를 부를 필요가 없음
+         * 그럴 경우 사용하면 전체 데이터의 갯수를 가져오면 되는거다.
+         */
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchCount);
     }
 
     private List<MemberTeamDto> getMemberTeamDtos(MemberSearchCondition condition, Pageable pageable) {
@@ -118,6 +127,20 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                 .limit(pageable.getPageSize())
                 .fetch();
         return content;
+    }
+
+    private long getTotal(MemberSearchCondition condition) {
+        long total = queryFactory
+                .selectFrom(member)
+                .leftJoin(member.team, team)
+                .where(
+                        usernameEq(condition.getUsername()),
+                        teamNameEq(condition.getTeamName()),
+                        ageGoe(condition.getAgeGoe()),
+                        ageLoe(condition.getAgeLoe())
+                )
+                .fetchCount();
+        return total;
     }
 
     private BooleanExpression usernameEq(String username) {
