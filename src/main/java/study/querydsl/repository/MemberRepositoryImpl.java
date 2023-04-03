@@ -2,7 +2,6 @@ package study.querydsl.repository;
 
 import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.JPQLQuery;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.data.domain.Page;
@@ -16,46 +15,21 @@ import study.querydsl.dto.MemberTeamDto;
 import study.querydsl.dto.QMemberTeamDto;
 import study.querydsl.entity.Member;
 
-import javax.persistence.EntityManager;
 import java.util.List;
 
 import static study.querydsl.entity.QMember.member;
 import static study.querydsl.entity.QTeam.team;
 
-public class MemberRepositoryImpl extends QuerydslRepositorySupport implements MemberRepositoryCustom {
+public class MemberRepositoryImpl implements MemberRepositoryCustom {
 
-    public MemberRepositoryImpl() {
-        super(Member.class);
+    private final JPAQueryFactory queryFactory;
+
+    public MemberRepositoryImpl(JPAQueryFactory queryFactory) {
+        this.queryFactory = queryFactory;
     }
-
-//    private final JPAQueryFactory queryFactory;
-//
-//    public MemberRepositoryImpl(JPAQueryFactory queryFactory) {
-//        this.queryFactory = queryFactory;
-//    }
 
     @Override
     public List<MemberTeamDto> search(MemberSearchCondition condition) {
-
-        EntityManager entityManager = getEntityManager();
-
-        //QuerydslRepositorySupport
-        List<MemberTeamDto> result = from(member).leftJoin(member.team, team)
-                .where(
-                        usernameEq(condition.getUsername()),
-                        teamNameEq(condition.getTeamName()),
-                        ageGoe(condition.getAgeGoe()),
-                        ageLoe(condition.getAgeLoe())
-                )
-                .select(new QMemberTeamDto(
-                        member.id.as("memberId"),
-                        member.username,
-                        member.age,
-                        member.team.id.as("teamId"),
-                        team.name.as("teamName")
-                ))
-                .fetch();
-
         return queryFactory
                 .select(new QMemberTeamDto(
                         member.id.as("memberId"),
@@ -184,29 +158,5 @@ public class MemberRepositoryImpl extends QuerydslRepositorySupport implements M
 
     private BooleanExpression ageLoe(Integer ageLoe) {
         return ageLoe != null ? member.age.loe(ageLoe) : null;
-    }
-
-    @Override
-    public List<MemberTeamDto> searchPageSimple(MemberSearchCondition condition, Pageable pageable) {
-        JPQLQuery<MemberTeamDto> jpqlQuery = from(member).leftJoin(member.team, team)
-                .where(
-                        usernameEq(condition.getUsername()),
-                        teamNameEq(condition.getTeamName()),
-                        ageGoe(condition.getAgeGoe()),
-                        ageLoe(condition.getAgeLoe())
-                )
-                .select(new QMemberTeamDto(
-                        member.id.as("memberId"),
-                        member.username,
-                        member.age,
-                        member.team.id.as("teamId"),
-                        team.name.as("teamName")
-                ));
-
-        JPQLQuery<MemberTeamDto> result = getQuerydsl().applyPagination(pageable, jpqlQuery);
-
-        List<MemberTeamDto> fetch = result.fetch();
-
-        return fetch;
     }
 }
